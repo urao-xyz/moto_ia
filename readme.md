@@ -11,7 +11,7 @@ Ce projet utilise PyTorch pour simuler la dynamique d'une moto en fonction de di
 Pour exécuter ce projet, vous devez avoir Python 3.x installé ainsi que les bibliothèques suivantes :
 
 ```bash
-pip install torch matplotlib ipywidgets numpy tensorboard
+pip install torch matplotlib ipywidgets numpy tensorboard gym
 ```
 
 Pour lancer la simulation simplement :
@@ -20,8 +20,11 @@ python moto.py
 ```
 
 ## Entra\xeenement par renforcement (RL)
-Pour entraîner un agent de contrôle via RL et visualiser les métriques dans TensorBoard :
+Un environnement Gym est disponible via `MotorcycleEnv`. Pour entraîner un agent
+actor-critic et sauvegarder le modèle :
+
 ```bash
-python train_rl.py
-tensorboard --logdir=runs
+python train_rl.py --episodes 100 --energy-weight 0.1 --save agent.pth
 ```
+
+Les modèles sauvegardés peuvent être rechargés avec `--load chemin.pth`.

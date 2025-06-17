@@ -66,10 +66,13 @@ class Motorcycle(nn.Module):
         self.speed_history = []
         self.time_history = []
 
-    def forward(self, throttle, brake, dt):
+    def forward(self, throttle, brake, dt, generator=None):
         # Génération aléatoire de la masse à chaque pas de temps
-        mass_distribution = distributions.Normal(self.mass_mean, self.mass_std)
-        mass = mass_distribution.rsample()
+        if generator is not None:
+            noise = torch.randn((), generator=generator, device=self.device)
+        else:
+            noise = torch.randn((), device=self.device)
+        mass = self.mass_mean + self.mass_std * noise
 
         # Calcul des forces
         thrust = throttle * self.max_thrust
@@ -117,9 +120,12 @@ def simulate(motorcycle, throttle_input, brake_input, dt, simulation_time, write
             writer.add_scalar('Speed', speed, t.item())
         logging.info(f"Time: {t.item():.2f}s, Speed: {speed.item():.2f}m/s")
 
-def add_perturbation(motorcycle, dt):
+def add_perturbation(motorcycle, dt, generator=None):
     """Ajoute une perturbation aléatoire (par exemple, du vent ou des bosses)."""
-    perturbation_force = torch.normal(0.0, 10.0, size=(), device=device)  # Force aléatoire en Newtons
+    if generator is None:
+        perturbation_force = torch.normal(0.0, 10.0, size=(), device=device)
+    else:
+        perturbation_force = torch.normal(0.0, 10.0, size=(), device=device, generator=generator)
     motorcycle.speed += (perturbation_force / motorcycle.mass_mean) * dt
 
 def calculate_energy_consumption(motorcycle, throttle, brake, dt):

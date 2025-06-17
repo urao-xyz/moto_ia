@@ -1,57 +1,87 @@
+import argparse
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from moto import Motorcycle, DT, SIMULATION_TIME, TARGET_SPEED, device
+from moto import device
+from motorcycle_env import MotorcycleEnv
 from rl_agent import RLAgent
 
 
-def train_rl_agent(episodes: int = 200, seed: int = 0):
-    """Train an RL agent to reach TARGET_SPEED."""
+def train_rl_agent(
+    episodes: int = 200,
+    seed: int = 0,
+    hidden_size: int = 32,
+    energy_weight: float = 0.0,
+    save_path: str | None = None,
+    load_path: str | None = None,
+    use_value: bool = True,
+):
     torch.manual_seed(seed)
-    motorcycle = Motorcycle(device=device, mass_std=1e-3)
-    agent = RLAgent(device=device)
+    if load_path:
+        agent = RLAgent.load(load_path, device=device)
+    else:
+        agent = RLAgent(hidden_size=hidden_size, use_value=use_value, device=device)
+    env = MotorcycleEnv(energy_weight=energy_weight, device=device)
     writer = SummaryWriter()
-    steps = int(SIMULATION_TIME / DT)
 
     for ep in range(episodes):
-        motorcycle.reset()
-        state = motorcycle.speed.item()
+        state, _ = env.reset(seed=seed + ep)
+        done = False
         log_probs = []
         rewards = []
-        speeds = []
-        for _ in range(steps):
-            throttle, brake, log_prob = agent.select_action(state)
-            speed = motorcycle(throttle, brake, DT)
-            reward = -((speed - TARGET_SPEED) ** 2).item()
+        states = []
+        while not done:
+            throttle, brake, log_prob, _ = agent.select_action(float(state[0]))
+            next_state, reward, done, _ = env.step((throttle, brake))
             log_probs.append(log_prob)
             rewards.append(reward)
-            speeds.append(speed.item())
-            state = speed.item()
-        agent.update(log_probs, rewards)
+            states.append(float(state[0]))
+            state = next_state
+        agent.update(log_probs, rewards, states)
         writer.add_scalar("Episode Reward", sum(rewards), ep)
-        writer.add_scalar("Average Speed", np.mean(speeds), ep)
     writer.close()
+    if save_path:
+        agent.save(save_path)
     return agent
 
 
-def evaluate_agent(agent: RLAgent, episodes: int = 1, seed: int = 0) -> float:
-    """Return average final speed of the agent."""
+def evaluate_agent(
+    agent: RLAgent,
+    episodes: int = 1,
+    seed: int = 0,
+    energy_weight: float = 0.0,
+) -> float:
     torch.manual_seed(seed)
-    motorcycle = Motorcycle(device=agent.device, mass_std=1e-3)
-    steps = int(SIMULATION_TIME / DT)
-    final_speeds = []
-    for _ in range(episodes):
-        motorcycle.reset()
-        state = motorcycle.speed.item()
-        for _ in range(steps):
-            throttle, brake, _ = agent.select_action(state)
-            speed = motorcycle(throttle, brake, DT)
-            state = speed.item()
-        final_speeds.append(motorcycle.speed.item())
-    return float(np.mean(final_speeds))
+    env = MotorcycleEnv(energy_weight=energy_weight, device=agent.device)
+    final_rewards = []
+    for ep in range(episodes):
+        state, _ = env.reset(seed=seed + ep)
+        done = False
+        while not done:
+            throttle, brake, _, _ = agent.select_action(float(state[0]))
+            state, reward, done, _ = env.step((throttle, brake))
+        final_rewards.append(reward)
+    return float(np.mean(final_rewards))
 
 
 if __name__ == "__main__":
-    train_rl_agent()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--episodes", type=int, default=200)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--hidden-size", type=int, default=32)
+    parser.add_argument("--energy-weight", type=float, default=0.0)
+    parser.add_argument("--save", type=str, default=None)
+    parser.add_argument("--load", type=str, default=None)
+    parser.add_argument("--no-value", action="store_true")
+    args = parser.parse_args()
 
+    train_rl_agent(
+        episodes=args.episodes,
+        seed=args.seed,
+        hidden_size=args.hidden_size,
+        energy_weight=args.energy_weight,
+        save_path=args.save,
+        load_path=args.load,
+        use_value=not args.no_value,
+    )
