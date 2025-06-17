@@ -18,3 +18,10 @@ Pour lancer la simulation simplement :
 ```bash
 python moto.py
 ```
+
+## Entra\xeenement par renforcement (RL)
+Pour entraîner un agent de contrôle via RL et visualiser les métriques dans TensorBoard :
+```bash
+python train_rl.py
+tensorboard --logdir=runs
+```
