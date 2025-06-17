@@ -73,7 +73,7 @@ class Motorcycle(nn.Module):
 
         # Calcul des forces
         thrust = throttle * self.max_thrust
-        braking = brake * self.max_brake
+        braking = -brake * self.max_brake
         drag = -self.drag_coefficient * self.speed ** 2
 
         # Mise à jour de la vitesse
@@ -315,6 +315,6 @@ if __name__ == "__main__":
     #plot_additional_graphs(motorcycle)
 
     '''
-    Pour lancer la visu sur tensorboard : 
+    Pour lancer la visualisation sur TensorBoard :
     tensorboard --logdir=runs
     '''

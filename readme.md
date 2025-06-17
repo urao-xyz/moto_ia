@@ -12,4 +12,9 @@ Pour exécuter ce projet, vous devez avoir Python 3.x installé ainsi que les bi
 
 ```bash
 pip install torch matplotlib ipywidgets numpy tensorboard
+```
 
+Pour lancer la simulation simplement :
+```bash
+python moto.py
+```
