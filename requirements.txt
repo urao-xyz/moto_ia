@@ -3,3 +3,4 @@ matplotlib
 ipywidgets 
 numpy 
 tensorboard
+gym
